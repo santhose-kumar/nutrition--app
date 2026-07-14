@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Nutrition — Food Log</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="data:image/png;base64,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" />
+<link rel="apple-touch-icon" href="data:image/png;base64,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" />
+<meta name="theme-color" content="#22201D" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; background:#EFE8D8; font-family:'Inter',sans-serif; }
+  #root { display:flex; flex-direction:column; height:100vh; height:100dvh; }
+  .ft-display { font-family:'Fraunces',serif; }
+  .ft-mono { font-family:'Space Mono',monospace; }
+  button { font-family:inherit; }
+  .ft-btn { transition: transform .12s ease, opacity .12s ease; cursor:pointer; }
+  .ft-btn:active { transform:scale(.96); }
+  input:focus, textarea:focus { outline:2px solid #5C7A5C; outline-offset:1px; }
+  .ft-fade-in { animation: ftFade .2s ease; }
+  @keyframes ftFade { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+  .ft-dot { animation: ftPulse 1.2s ease-in-out infinite; display:inline-block; width:5px; height:5px; border-radius:50%; background:#8A8375; }
+  .ft-dot:nth-child(2){animation-delay:.15s;} .ft-dot:nth-child(3){animation-delay:.3s;}
+  @keyframes ftPulse { 0%,60%,100%{opacity:.3;} 30%{opacity:1;} }
+  .ft-spin { animation: ftSpin 1s linear infinite; display:inline-block; }
+  @keyframes ftSpin { to{transform:rotate(360deg);} }
+  ::-webkit-scrollbar{ width:0; height:0; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(34,32,29,.55); display:flex; align-items:flex-end; justify-content:center; z-index:50; }
+  .modal-sheet { background:#EFE8D8; width:100%; max-width:480px; border-radius:18px 18px 0 0; padding:20px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+/* ---------- utilities ---------- */
+const $ = (sel, el=document) => el.querySelector(sel);
+const h = (tag, props={}, children=[]) => {
+  const el = document.createElement(tag);
+  for (const [k,v] of Object.entries(props||{})) {
+    if (k === "style") Object.assign(el.style, v);
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "html") el.innerHTML = v;
+    else if (v !== false && v !== null && v !== undefined) el.setAttribute(k, v);
+  }
+  (Array.isArray(children)?children:[children]).forEach(c=>{
+    if (c===null||c===undefined) return;
+    el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  });
+  return el;
+};
+const fmtDate = (d) => d.toISOString().slice(0,10);
+function prettyDate(dStr){
+  const today = fmtDate(new Date());
+  if (dStr===today) return "Today";
+  const y = new Date(); y.setDate(y.getDate()-1);
+  if (dStr===fmtDate(y)) return "Yesterday";
+  return new Date(dStr+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+}
+function fmtTime(ts){ return new Date(ts).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}); }
+const sleep = (ms) => new Promise(r=>setTimeout(r,ms));
+
+/* ---------- storage (real browser localStorage — persists on this device) ---------- */
+const store = {
+  get(key, fallback=null){
+    try { const v = localStorage.getItem(key); return v===null ? fallback : JSON.parse(v); }
+    catch(e){ return fallback; }
+  },
+  set(key, value){
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch(e){ return false; }
+  }
+};
+
+async function withRetry(fn, attempts=4){
+  let lastErr;
+  for (let i=0;i<attempts;i++){
+    try { return await fn(); }
+    catch(e){ lastErr=e; if(i<attempts-1) await sleep(400*Math.pow(2,i)); }
+  }
+  throw lastErr;
+}
+
+/* ---------- food lookup via user's own Anthropic API key ---------- */
+async function lookupFood(text, apiKey){
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{
+        role: "user",
+        content: `You are a nutrition database. The user describes food/drink they consumed, possibly multiple items with quantities (e.g. "2 idli and a tea", "large latte", "chicken biryani").
+
+Respond with ONLY a raw JSON array, no markdown fences, no prose. Each element:
+{"name": "short item name including quantity", "calories": integer, "protein": integer_grams, "carbs": integer_grams, "fat": integer_grams}
+
+Use realistic standard nutrition estimates (Indian and international foods both apply). Assume one typical serving if no quantity is stated. If the text isn't food/drink, respond with exactly: []
+
+User input: "${text}"`
+      }]
+    })
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(()=>({}));
+    throw new Error(errBody?.error?.message || `Request failed (${res.status})`);
+  }
+  const data = await res.json();
+  const textBlock = (data.content||[]).find(b=>b.type==="text");
+  if (!textBlock) throw new Error("No response");
+  const cleaned = textBlock.text.replace(/```json|```/g,"").trim();
+  const parsed = JSON.parse(cleaned);
+  if (!Array.isArray(parsed)) throw new Error("Bad format");
+  return parsed.filter(it=>it&&it.name&&Number.isFinite(it.calories)).map(it=>({
+    name:String(it.name), calories:Math.round(it.calories),
+    protein:Math.round(it.protein||0), carbs:Math.round(it.carbs||0), fat:Math.round(it.fat||0)
+  }));
+}
+
+/* ---------- app state ---------- */
+const state = {
+  dateKey: fmtDate(new Date()),
+  goal: store.get("nutrition:goal", 2000),
+  apiKey: store.get("nutrition:apikey", ""),
+  entries: [],
+  input: "",
+  thinking: false,
+  error: "",
+  syncState: "synced",
+  showSettings: false,
+  showGoalEdit: false,
+};
+
+function loadDay(dateKey){
+  state.entries = store.get(`nutrition:day:${dateKey}`, []);
+}
+loadDay(state.dateKey);
+
+function saveDay(){
+  state.syncState = "syncing"; render();
+  const ok = store.set(`nutrition:day:${state.dateKey}`, state.entries);
+  state.syncState = ok ? "synced" : "unsynced";
+  if (!ok) state.error = "Your entries are safe on screen, but the last save didn't sync. Tap retry.";
+  render();
+}
+
+function isToday(){ return state.dateKey === fmtDate(new Date()); }
+
+function totals(){
+  return state.entries.reduce((acc,e)=>{
+    e.items.forEach(it=>{ acc.cal+=it.calories; acc.protein+=it.protein; acc.carbs+=it.carbs; acc.fat+=it.fat; });
+    return acc;
+  }, {cal:0,protein:0,carbs:0,fat:0});
+}
+
+/* ---------- actions ---------- */
+function shiftDay(delta){
+  const d = new Date(state.dateKey+"T00:00:00");
+  d.setDate(d.getDate()+delta);
+  const next = fmtDate(d);
+  if (next > fmtDate(new Date())) return;
+  state.dateKey = next;
+  loadDay(next);
+  render();
+}
+
+async function handleSend(){
+  const text = state.input.trim();
+  if (!text || state.thinking) return;
+  if (!state.apiKey){
+    state.showSettings = true; render(); return;
+  }
+  state.input = ""; state.error = ""; state.thinking = true; render();
+  try {
+    const items = await withRetry(()=>lookupFood(text, state.apiKey), 2);
+    if (items.length===0){
+      state.error = 'Couldn\'t identify food in that — try something like "1 boiled egg".';
+    } else {
+      state.entries.push({ id:Date.now().toString(), ts:Date.now(), text, items });
+      saveDay();
+    }
+  } catch(e){
+    state.error = e.message && e.message.includes("credit") ? e.message :
+      (e.message && e.message.toLowerCase().includes("key") ? "That API key was rejected — check it in Settings." :
+      "Couldn't look that up — check your connection and try again.");
+  }
+  state.thinking = false; render();
+}
+
+function removeEntry(id){
+  state.entries = state.entries.filter(e=>e.id!==id);
+  saveDay();
+}
+
+function saveApiKey(key){
+  state.apiKey = key.trim();
+  store.set("nutrition:apikey", state.apiKey);
+  state.showSettings = false; render();
+}
+
+function saveGoal(val){
+  const n = parseInt(val,10);
+  if (n && n>0){ state.goal = n; store.set("nutrition:goal", n); }
+  state.showGoalEdit = false; render();
+}
+
+/* ---------- render ---------- */
+function MacroCard(icon, label, value, color){
+  return h("div",{style:{flex:"1",background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"10px",padding:"9px 8px",textAlign:"center"}},[
+    h("div",{style:{fontSize:"16px",marginBottom:"3px"}},icon),
+    h("div",{class:"ft-mono",style:{fontSize:"15px",fontWeight:"700",color:"#22201D"}},value+"g"),
+    h("div",{style:{fontSize:"9.5px",color:"#8A8375",letterSpacing:"0.3px"}},label)
+  ]);
+}
+
+function SyncBadge(){
+  if (state.syncState==="syncing") return h("span",{style:{display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",color:"#8A8375"}},[h("span",{class:"ft-spin"},"↻")," saving"]);
+  if (state.syncState==="unsynced") return h("button",{class:"ft-btn",onClick:saveDay,style:{display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",color:"#B0503B",background:"none",border:"none",padding:"0"}},["⚠ not saved · retry"]);
+  return h("span",{style:{display:"flex",alignItems:"center",gap:"4px",fontSize:"10px",color:"#5C7A5C"}},["✓ saved"]);
+}
+
+function SettingsModal(){
+  let val = state.apiKey;
+  const input = h("input",{type:"password",placeholder:"sk-ant-...",value:val,
+    style:{width:"100%",boxSizing:"border-box",padding:"11px 12px",borderRadius:"9px",border:"1px solid #C9C2B0",fontSize:14,marginBottom:"10px",fontFamily:"'Space Mono',monospace"}});
+  input.addEventListener("input",e=>val=e.target.value);
+  return h("div",{class:"modal-overlay",onClick:(e)=>{ if(e.target.classList.contains("modal-overlay")){ state.showSettings=false; render(); } }},[
+    h("div",{class:"modal-sheet"},[
+      h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Your Anthropic API key"),
+      h("p",{style:{fontSize:"12.5px",color:"#8A8375",margin:"0 0 12px",lineHeight:"1.5"}},
+        "Needed for the app to look up calories from what you type. It's stored only on this device (never sent anywhere but Anthropic's API), and usage is billed to your own account."),
+      input,
+      h("div",{style:{display:"flex",gap:"8px"}},[
+        h("button",{class:"ft-btn",onClick:()=>saveApiKey(val),style:{flex:"1",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"9px",padding:"11px 0",fontSize:14,fontWeight:"600"}},"Save"),
+        h("button",{class:"ft-btn",onClick:()=>{state.showSettings=false; render();},style:{background:"none",border:"1px solid #C9C2B0",color:"#8A8375",borderRadius:"9px",padding:"11px 14px",fontSize:14}},"Cancel")
+      ]),
+      h("a",{href:"https://console.anthropic.com/settings/keys",target:"_blank",rel:"noopener",style:{display:"block",marginTop:"12px",fontSize:"12px",color:"#5C7A5C",textAlign:"center"}},"Get an API key →")
+    ])
+  ]);
+}
+
+function render(){
+  const root = $("#root");
+  root.innerHTML = "";
+  const t = totals();
+  const pct = Math.min(100, Math.round((t.cal/state.goal)*100)) || 0;
+  const remaining = state.goal - t.cal;
+  const overGoal = t.cal > state.goal;
+
+  // header
+  const header = h("div",{style:{padding:"16px 16px 12px",borderBottom:"1px solid #DDD4BC",background:"#EFE8D8"}});
+  header.appendChild(h("div",{style:{display:"flex",alignItems:"baseline",justifyContent:"space-between"}},[
+    h("h1",{class:"ft-display",style:{fontSize:"21px",fontWeight:"700",color:"#22201D",margin:"0"}},"Nutrition"),
+    h("div",{style:{display:"flex",alignItems:"center",gap:"12px"}},[
+      SyncBadge(),
+      h("button",{class:"ft-btn","aria-label":"Settings",onClick:()=>{state.showSettings=true;render();},
+        style:{background:"none",border:"none",fontSize:"16px",color:"#8A8375",padding:"0"}},"⚙")
+    ])
+  ]));
+  header.appendChild(h("div",{style:{display:"flex",alignItems:"center",justifyContent:"center",gap:"12px",margin:"8px 0 10px"}},[
+    h("button",{class:"ft-btn","aria-label":"Previous day",onClick:()=>shiftDay(-1),style:{background:"none",border:"none",color:"#22201D",fontSize:"16px",padding:"4px"}},"‹"),
+    h("span",{style:{fontSize:"13px",fontWeight:"600",color:"#22201D",minWidth:"100px",textAlign:"center"}},prettyDate(state.dateKey)),
+    h("button",{class:"ft-btn","aria-label":"Next day",onClick:()=>shiftDay(1),disabled:isToday(),
+      style:{background:"none",border:"none",color:isToday()?"#C9C2B0":"#22201D",fontSize:"16px",padding:"4px",cursor:isToday()?"default":"pointer"}},"›")
+  ]));
+  header.appendChild(h("div",{style:{height:"9px",background:"#DFD6BE",borderRadius:"999px",overflow:"hidden"}},[
+    h("div",{style:{height:"100%",width:pct+"%",background:overGoal?"#B0503B":"#5C7A5C",transition:"width .4s ease, background .3s ease"}})
+  ]));
+  header.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",margin:"6px 0 12px",alignItems:"center"}},[
+    h("span",{class:"ft-mono",style:{fontSize:"13px",color:"#22201D",fontWeight:"700"}},[t.cal+" ",h("span",{style:{fontWeight:"400",color:"#8A8375"}},"/ "+state.goal+" cal")]),
+    h("div",{style:{display:"flex",alignItems:"center",gap:"5px",fontSize:"11px",color:overGoal?"#B0503B":"#5C7A5C",fontWeight:"500"}},
+      overGoal ? `${Math.abs(remaining)} over` : `${remaining} left`)
+  ]));
+  header.appendChild(h("div",{style:{display:"flex",gap:"8px"}},[
+    MacroCard("🥩","PROTEIN",t.protein,"#8B3A62"),
+    MacroCard("🌾","CARBS",t.carbs,"#C9A227"),
+    MacroCard("💧","FAT",t.fat,"#5C7A5C")
+  ]));
+
+  if (state.showGoalEdit){
+    let gv = String(state.goal);
+    const gi = h("input",{type:"number",value:gv,style:{width:"80px",padding:"5px 7px",borderRadius:"7px",border:"1px solid #C9C2B0",fontSize:"12px",fontFamily:"'Space Mono',monospace"}});
+    gi.addEventListener("input",e=>gv=e.target.value);
+    header.appendChild(h("div",{style:{marginTop:"10px",display:"flex",gap:"6px",alignItems:"center"}},[
+      gi, h("button",{class:"ft-btn",onClick:()=>saveGoal(gv),style:{fontSize:"11px",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"7px",padding:"5px 10px"}},"Save")
+    ]));
+  } else {
+    header.appendChild(h("button",{class:"ft-btn",onClick:()=>{state.showGoalEdit=true;render();},
+      style:{marginTop:"8px",fontSize:"11px",color:"#8A8375",background:"none",border:"none",textDecoration:"underline",padding:"0"}},"Edit calorie goal"));
+  }
+  root.appendChild(header);
+
+  // feed
+  const feed = h("div",{style:{flex:"1",overflowY:"auto",padding:"14px 16px 8px"}});
+  if (state.entries.length===0){
+    feed.appendChild(h("div",{style:{textAlign:"center",padding:"26px 10px",color:"#8A8375"}},[
+      h("p",{style:{fontSize:"13px",margin:"0"}}, isToday() ? 'Log something — try "tea" or "2 idli and coffee".' : "Nothing logged this day.")
+    ]));
+  } else {
+    [...state.entries].reverse().forEach(e=>{
+      const card = h("div",{class:"ft-fade-in",style:{background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"12px",padding:"10px 12px",marginBottom:"10px"}});
+      card.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"6px"}},[
+        h("span",{class:"ft-mono",style:{fontSize:"10px",color:"#8A8375"}},fmtTime(e.ts)),
+        isToday() ? h("button",{class:"ft-btn","aria-label":"Remove entry",onClick:()=>removeEntry(e.id),
+          style:{background:"none",border:"none",color:"#B0503B",padding:"2px"}},"🗑") : null
+      ]));
+      e.items.forEach((it,i)=>{
+        const row = h("div",{style:{padding:"4px 0",borderTop:i>0?"1px dashed #E3DCC7":"none"}});
+        row.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"14px",color:"#22201D"}},[
+          h("span",{},it.name), h("span",{class:"ft-mono",style:{color:"#5C7A5C",fontWeight:"700"}},it.calories+" cal")
+        ]));
+        row.appendChild(h("div",{class:"ft-mono",style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},`P ${it.protein}g · C ${it.carbs}g · F ${it.fat}g`));
+        card.appendChild(row);
+      });
+      feed.appendChild(card);
+    });
+  }
+  if (state.thinking){
+    feed.appendChild(h("div",{class:"ft-fade-in",style:{display:"flex",justifyContent:"flex-start",marginBottom:"10px"}},[
+      h("div",{style:{background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"12px",padding:"10px 14px",display:"flex",gap:"4px"}},[
+        h("span",{class:"ft-dot"}), h("span",{class:"ft-dot"}), h("span",{class:"ft-dot"})
+      ])
+    ]));
+  }
+  root.appendChild(feed);
+  feed.scrollTop = feed.scrollHeight;
+
+  if (state.error){
+    root.appendChild(h("p",{style:{fontSize:"12px",color:"#B0503B",textAlign:"center",margin:"0 16px 8px"}},state.error));
+  }
+
+  if (isToday()){
+    const bar = h("div",{style:{display:"flex",gap:"8px",padding:"10px 16px 18px",borderTop:"1px solid #DDD4BC",background:"#EFE8D8"}});
+    const inputEl = h("input",{value:state.input,placeholder:'e.g. "tea" or "2 idli and coffee"',disabled:state.thinking,
+      style:{flex:"1",padding:"11px 13px",borderRadius:"22px",border:"1px solid #C9C2B0",fontSize:"14px",background:"#fff"}});
+    inputEl.addEventListener("input",e=>state.input=e.target.value);
+    inputEl.addEventListener("keydown",e=>{ if(e.key==="Enter") handleSend(); });
+    const sendBtn = h("button",{class:"ft-btn","aria-label":"Send",onClick:handleSend,disabled:state.thinking||!state.input.trim(),
+      style:{width:"42px",height:"42px",borderRadius:"50%",border:"none",background:(state.thinking||!state.input.trim())?"#C9C2B0":"#22201D",color:"#EFE8D8",flexShrink:"0",fontSize:"16px"}},"➤");
+    bar.appendChild(inputEl); bar.appendChild(sendBtn);
+    root.appendChild(bar);
+    setTimeout(()=>{ if(document.activeElement!==inputEl) {} },0);
+  }
+
+  if (state.showSettings){ root.appendChild(SettingsModal()); }
+}
+
+render();
+
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
