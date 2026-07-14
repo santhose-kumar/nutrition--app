@@ -138,6 +138,8 @@ const state = {
   syncState: "synced",
   showSettings: false,
   showGoalEdit: false,
+  showBMIModal: false,
+  profile: store.get("nutrition:profile", { height:"", weight:"", age:"", sex:"male", activity:"1.375", goalType:"maintain" }),
 };
 
 function loadDay(dateKey){
@@ -213,6 +215,35 @@ function saveGoal(val){
   state.showGoalEdit = false; render();
 }
 
+/* ---------- BMI / calorie goal calculator ---------- */
+function bmiValue(weightKg, heightCm){
+  if (!weightKg || !heightCm) return null;
+  const m = heightCm/100;
+  return weightKg/(m*m);
+}
+function bmiCategory(bmi){
+  if (bmi==null) return "";
+  if (bmi < 18.5) return "Underweight";
+  if (bmi < 25) return "Normal";
+  if (bmi < 30) return "Overweight";
+  return "Obese";
+}
+function calcBMR(weightKg, heightCm, age, sex){
+  const base = 10*weightKg + 6.25*heightCm - 5*age;
+  return sex === "male" ? base + 5 : base - 161;
+}
+function suggestedCalories(bmr, activity, goalType){
+  const tdee = bmr * activity;
+  if (goalType === "lose") return Math.round(tdee - 500);
+  if (goalType === "gain") return Math.round(tdee + 400);
+  return Math.round(tdee);
+}
+function saveProfile(p){
+  state.profile = p;
+  store.set("nutrition:profile", p);
+  render();
+}
+
 /* ---------- render ---------- */
 function MacroCard(icon, label, value, color){
   return h("div",{style:{flex:"1",background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"10px",padding:"9px 8px",textAlign:"center"}},[
@@ -244,6 +275,93 @@ function SettingsModal(){
         h("button",{class:"ft-btn",onClick:()=>{state.showSettings=false; render();},style:{background:"none",border:"1px solid #C9C2B0",color:"#8A8375",borderRadius:"9px",padding:"11px 14px",fontSize:14}},"Cancel")
       ]),
       h("a",{href:"https://console.anthropic.com/settings/keys",target:"_blank",rel:"noopener",style:{display:"block",marginTop:"12px",fontSize:"12px",color:"#5C7A5C",textAlign:"center"}},"Get an API key →")
+    ])
+  ]);
+}
+
+function BMICalcModal(){
+  let p = { ...state.profile };
+
+  const field = (label, inputEl) => h("div",{style:{marginBottom:"10px"}},[
+    h("label",{style:{display:"block",fontSize:"11px",color:"#8A8375",marginBottom:"3px"}},label),
+    inputEl
+  ]);
+  const textInputStyle = {width:"100%",boxSizing:"border-box",padding:"10px 11px",borderRadius:"9px",border:"1px solid #C9C2B0",fontSize:14,fontFamily:"'Space Mono',monospace"};
+  const selectStyle = {width:"100%",boxSizing:"border-box",padding:"10px 11px",borderRadius:"9px",border:"1px solid #C9C2B0",fontSize:14,background:"#fff"};
+
+  const heightInput = h("input",{type:"number",inputmode:"decimal",placeholder:"e.g. 172",value:p.height,style:textInputStyle});
+  heightInput.addEventListener("input",e=>{ p.height=e.target.value; refreshResult(); });
+  const weightInput = h("input",{type:"number",inputmode:"decimal",placeholder:"e.g. 78",value:p.weight,style:textInputStyle});
+  weightInput.addEventListener("input",e=>{ p.weight=e.target.value; refreshResult(); });
+  const ageInput = h("input",{type:"number",inputmode:"numeric",placeholder:"e.g. 38",value:p.age,style:textInputStyle});
+  ageInput.addEventListener("input",e=>{ p.age=e.target.value; refreshResult(); });
+
+  const sexSelect = h("select",{style:selectStyle},[
+    h("option",{value:"male",selected:p.sex==="male"},"Male"),
+    h("option",{value:"female",selected:p.sex==="female"},"Female")
+  ]);
+  sexSelect.addEventListener("change",e=>{ p.sex=e.target.value; refreshResult(); });
+
+  const activitySelect = h("select",{style:selectStyle},[
+    h("option",{value:"1.2",selected:p.activity==="1.2"},"Sedentary (little/no exercise)"),
+    h("option",{value:"1.375",selected:p.activity==="1.375"},"Light (1-3 days/week)"),
+    h("option",{value:"1.55",selected:p.activity==="1.55"},"Moderate (3-5 days/week)"),
+    h("option",{value:"1.725",selected:p.activity==="1.725"},"Active (6-7 days/week)"),
+    h("option",{value:"1.9",selected:p.activity==="1.9"},"Very active (physical job/2x training)")
+  ]);
+  activitySelect.addEventListener("change",e=>{ p.activity=e.target.value; refreshResult(); });
+
+  const goalSelect = h("select",{style:selectStyle},[
+    h("option",{value:"lose",selected:p.goalType==="lose"},"Lose weight (~0.5kg/week)"),
+    h("option",{value:"maintain",selected:p.goalType==="maintain"},"Maintain weight"),
+    h("option",{value:"gain",selected:p.goalType==="gain"},"Gain weight")
+  ]);
+  goalSelect.addEventListener("change",e=>{ p.goalType=e.target.value; refreshResult(); });
+
+  const resultBox = h("div",{style:{background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"10px",padding:"12px",margin:"12px 0",textAlign:"center"}});
+  const applyBtn = h("button",{class:"ft-btn",style:{flex:"1",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"9px",padding:"11px 0",fontSize:14,fontWeight:"600"}},"Use as my calorie goal");
+
+  function refreshResult(){
+    const w = parseFloat(p.weight), ht = parseFloat(p.height), age = parseInt(p.age,10);
+    resultBox.innerHTML = "";
+    if (!w || !ht || !age){
+      resultBox.appendChild(h("p",{style:{fontSize:"12px",color:"#8A8375",margin:"0"}},"Enter height, weight, and age to see your BMI and suggested calories."));
+      applyBtn.setAttribute("disabled","true");
+      applyBtn.style.background = "#C9C2B0";
+      return;
+    }
+    const bmi = bmiValue(w, ht);
+    const cat = bmiCategory(bmi);
+    const bmr = calcBMR(w, ht, age, p.sex);
+    const cals = suggestedCalories(bmr, parseFloat(p.activity), p.goalType);
+    resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"20px",fontWeight:"700",color:"#22201D"}},bmi.toFixed(1)));
+    resultBox.appendChild(h("div",{style:{fontSize:"11px",color:"#8A8375",marginBottom:"8px"}},`BMI · ${cat}`));
+    resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#5C7A5C"}},cals+" cal/day"));
+    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},"suggested daily target"));
+    applyBtn.removeAttribute("disabled");
+    applyBtn.style.background = "#22201D";
+    applyBtn.onclick = ()=>{ saveProfile(p); saveGoal(String(cals)); state.showBMIModal=false; render(); };
+  }
+  refreshResult();
+
+  return h("div",{class:"modal-overlay",onClick:(e)=>{ if(e.target.classList.contains("modal-overlay")){ state.showBMIModal=false; render(); } }},[
+    h("div",{class:"modal-sheet",style:{maxHeight:"85vh",overflowY:"auto"}},[
+      h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Calculate your calorie goal"),
+      h("p",{style:{fontSize:"12.5px",color:"#8A8375",margin:"0 0 12px",lineHeight:"1.5"}},
+        "Based on your BMI and daily activity, using the Mifflin-St Jeor formula."),
+      h("div",{style:{display:"flex",gap:"8px"}},[
+        h("div",{style:{flex:"1"}},[field("Height (cm)", heightInput)]),
+        h("div",{style:{flex:"1"}},[field("Weight (kg)", weightInput)]),
+        h("div",{style:{flex:"1"}},[field("Age", ageInput)])
+      ]),
+      field("Sex", sexSelect),
+      field("Activity level", activitySelect),
+      field("Goal", goalSelect),
+      resultBox,
+      h("div",{style:{display:"flex",gap:"8px"}},[
+        applyBtn,
+        h("button",{class:"ft-btn",onClick:()=>{state.showBMIModal=false; render();},style:{background:"none",border:"1px solid #C9C2B0",color:"#8A8375",borderRadius:"9px",padding:"11px 14px",fontSize:14}},"Close")
+      ])
     ])
   ]);
 }
@@ -294,8 +412,12 @@ function render(){
       gi, h("button",{class:"ft-btn",onClick:()=>saveGoal(gv),style:{fontSize:"11px",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"7px",padding:"5px 10px"}},"Save")
     ]));
   } else {
-    header.appendChild(h("button",{class:"ft-btn",onClick:()=>{state.showGoalEdit=true;render();},
-      style:{marginTop:"8px",fontSize:"11px",color:"#8A8375",background:"none",border:"none",textDecoration:"underline",padding:"0"}},"Edit calorie goal"));
+    header.appendChild(h("div",{style:{marginTop:"8px",display:"flex",gap:"12px"}},[
+      h("button",{class:"ft-btn",onClick:()=>{state.showGoalEdit=true;render();},
+        style:{fontSize:"11px",color:"#8A8375",background:"none",border:"none",textDecoration:"underline",padding:"0"}},"Edit calorie goal"),
+      h("button",{class:"ft-btn",onClick:()=>{state.showBMIModal=true;render();},
+        style:{fontSize:"11px",color:"#5C7A5C",background:"none",border:"none",textDecoration:"underline",padding:"0"}},"Calculate from BMI")
+    ]));
   }
   root.appendChild(header);
 
@@ -352,6 +474,7 @@ function render(){
   }
 
   if (state.showSettings){ root.appendChild(SettingsModal()); }
+  if (state.showBMIModal){ root.appendChild(BMICalcModal()); }
 }
 
 render();
