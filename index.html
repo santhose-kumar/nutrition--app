@@ -144,6 +144,7 @@ const state = {
   showBMIModal: false,
   profile: store.get("nutrition:profile", { height:"", weight:"", age:"", sex:"male", activity:"1.375", goalType:"maintain" }),
   waterGoal: store.get("nutrition:watergoal", null),
+  stepsGoal: store.get("nutrition:stepsgoal", null),
 };
 
 function loadDay(dateKey){
@@ -251,6 +252,29 @@ function waterLitersForWeight(weightKg){
   if (!weightKg) return null;
   return weightKg * 0.033; // ~33ml per kg body weight, standard hydration guideline
 }
+
+/* ---------- steps / walking recommendation ---------- */
+function baseStepsForActivity(activity){
+  const map = { "1.2":7000, "1.375":8500, "1.55":10000, "1.725":11500, "1.9":13000 };
+  return map[String(activity)] || 8000;
+}
+function stepsRecommendation(activity, goalType, bmiCat){
+  let steps = baseStepsForActivity(activity);
+  if (goalType === "lose") steps += 1500;
+  if (goalType === "gain") steps -= 500;
+  if (bmiCat === "Overweight" || bmiCat === "Obese") steps += 1000;
+  return Math.max(5000, Math.round(steps/500)*500);
+}
+function walkingMinutesForSteps(steps){
+  return Math.round(steps/100); // ~100 steps/min at a brisk walking pace
+}
+function walkingKmForSteps(steps){
+  return steps * 0.0007; // ~0.7m average stride length
+}
+function walkingCaloriesForSteps(steps, weightKg){
+  if (!weightKg) return null;
+  return Math.round(steps * weightKg * 0.0005);
+}
 function saveProfile(p){
   state.profile = p;
   store.set("nutrition:profile", p);
@@ -259,6 +283,10 @@ function saveProfile(p){
 function saveWaterGoal(liters){
   state.waterGoal = liters;
   store.set("nutrition:watergoal", liters);
+}
+function saveStepsGoal(steps){
+  state.stepsGoal = steps;
+  store.set("nutrition:stepsgoal", steps);
 }
 
 /* ---------- render ---------- */
@@ -352,15 +380,21 @@ function BMICalcModal(){
     const bmr = calcBMR(w, ht, age, p.sex);
     const cals = suggestedCalories(bmr, parseFloat(p.activity), p.goalType);
     const water = waterLitersForWeight(w);
+    const steps = stepsRecommendation(p.activity, p.goalType, cat);
+    const walkMin = walkingMinutesForSteps(steps);
+    const walkKm = walkingKmForSteps(steps);
+    const walkCal = walkingCaloriesForSteps(steps, w);
     resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"20px",fontWeight:"700",color:"#22201D"}},bmi.toFixed(1)));
     resultBox.appendChild(h("div",{style:{fontSize:"11px",color:"#8A8375",marginBottom:"8px"}},`BMI · ${cat}`));
     resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#5C7A5C"}},cals+" cal/day"));
     resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px",marginBottom:"8px"}},"suggested daily target"));
     resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#2E7BA6"}},water.toFixed(1)+" L/day"));
-    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},"suggested water intake"));
+    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px",marginBottom:"8px"}},"suggested water intake"));
+    resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#B0503B"}},steps.toLocaleString()+" steps"));
+    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},`≈ ${walkMin} min walk · ${walkKm.toFixed(1)} km${walkCal?` · burns ~${walkCal} cal`:""}`));
     applyBtn.removeAttribute("disabled");
     applyBtn.style.background = "#22201D";
-    applyBtn.onclick = ()=>{ saveProfile(p); saveGoal(String(cals)); saveWaterGoal(Number(water.toFixed(1))); state.showBMIModal=false; render(); };
+    applyBtn.onclick = ()=>{ saveProfile(p); saveGoal(String(cals)); saveWaterGoal(Number(water.toFixed(1))); saveStepsGoal(steps); state.showBMIModal=false; render(); };
   }
   refreshResult();
 
@@ -368,7 +402,7 @@ function BMICalcModal(){
     h("div",{class:"modal-sheet",style:{maxHeight:"85vh",overflowY:"auto"}},[
       h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Calculate your daily goals"),
       h("p",{style:{fontSize:"12.5px",color:"#8A8375",margin:"0 0 12px",lineHeight:"1.5"}},
-        "Calorie goal from the Mifflin-St Jeor formula, plus your BMI and a suggested daily water intake."),
+        "Calorie goal from the Mifflin-St Jeor formula, plus BMI, water intake, and a walking/step target."),
       h("div",{style:{display:"flex",gap:"8px"}},[
         h("div",{style:{flex:"1"}},[field("Height (cm)", heightInput)]),
         h("div",{style:{flex:"1"}},[field("Weight (kg)", weightInput)]),
@@ -445,6 +479,15 @@ function render(){
     header.appendChild(h("div",{style:{marginTop:"8px",background:"#EAF2F6",border:"1px solid #CFE2EA",borderRadius:"10px",padding:"9px 11px",display:"flex",justifyContent:"space-between",alignItems:"center"}},[
       h("span",{style:{fontSize:"11px",color:"#2E7BA6",fontWeight:"600"}},"💧 Water target"),
       h("span",{class:"ft-mono",style:{fontSize:"13px",color:"#22201D",fontWeight:"700"}},`${state.waterGoal} L/day`)
+    ]));
+  }
+
+  if (state.stepsGoal){
+    const sw = walkingMinutesForSteps(state.stepsGoal);
+    const skm = walkingKmForSteps(state.stepsGoal);
+    header.appendChild(h("div",{style:{marginTop:"8px",background:"#F5EAE6",border:"1px solid #E8CFC5",borderRadius:"10px",padding:"9px 11px",display:"flex",justifyContent:"space-between",alignItems:"center"}},[
+      h("span",{style:{fontSize:"11px",color:"#B0503B",fontWeight:"600"}},"🚶 Steps target"),
+      h("span",{class:"ft-mono",style:{fontSize:"13px",color:"#22201D",fontWeight:"700"}},`${state.stepsGoal.toLocaleString()} steps · ${sw} min · ${skm.toFixed(1)} km`)
     ]));
   }
 
