@@ -102,9 +102,9 @@ async function lookupFood(text, apiKey){
         content: `You are a nutrition database. The user describes food/drink they consumed, possibly multiple items with quantities (e.g. "2 idli and a tea", "large latte", "chicken biryani").
 
 Respond with ONLY a raw JSON array, no markdown fences, no prose. Each element:
-{"name": "short item name including quantity", "calories": integer, "protein": integer_grams, "carbs": integer_grams, "fat": integer_grams}
+{"name": "short item name including quantity", "calories": integer, "protein": integer_grams, "carbs": integer_grams, "fat": integer_grams, "satFat": integer_grams (saturated/"bad" fat), "unsatFat": integer_grams (unsaturated/"good" fat — mono+poly combined), "fiber": integer_grams, "sugar": integer_grams, "sodium": integer_mg, "micros": array of 1-4 short strings naming the most notable vitamins/minerals this food is a meaningful source of (e.g. ["Vitamin C","Potassium"]; use [] if none stand out)}
 
-Use realistic standard nutrition estimates (Indian and international foods both apply). Assume one typical serving if no quantity is stated. If the text isn't food/drink, respond with exactly: []
+satFat + unsatFat should approximately add up to the total fat value. Use realistic standard nutrition estimates (Indian and international foods both apply). Assume one typical serving if no quantity is stated. If the text isn't food/drink, respond with exactly: []
 
 User input: "${text}"`
       }]
@@ -122,7 +122,10 @@ User input: "${text}"`
   if (!Array.isArray(parsed)) throw new Error("Bad format");
   return parsed.filter(it=>it&&it.name&&Number.isFinite(it.calories)).map(it=>({
     name:String(it.name), calories:Math.round(it.calories),
-    protein:Math.round(it.protein||0), carbs:Math.round(it.carbs||0), fat:Math.round(it.fat||0)
+    protein:Math.round(it.protein||0), carbs:Math.round(it.carbs||0), fat:Math.round(it.fat||0),
+    satFat:Math.round(it.satFat||0), unsatFat:Math.round(it.unsatFat||0),
+    fiber:Math.round(it.fiber||0), sugar:Math.round(it.sugar||0), sodium:Math.round(it.sodium||0),
+    micros: Array.isArray(it.micros) ? it.micros.filter(m=>typeof m==="string").slice(0,4) : []
   }));
 }
 
@@ -140,6 +143,7 @@ const state = {
   showGoalEdit: false,
   showBMIModal: false,
   profile: store.get("nutrition:profile", { height:"", weight:"", age:"", sex:"male", activity:"1.375", goalType:"maintain" }),
+  waterGoal: store.get("nutrition:watergoal", null),
 };
 
 function loadDay(dateKey){
@@ -159,9 +163,14 @@ function isToday(){ return state.dateKey === fmtDate(new Date()); }
 
 function totals(){
   return state.entries.reduce((acc,e)=>{
-    e.items.forEach(it=>{ acc.cal+=it.calories; acc.protein+=it.protein; acc.carbs+=it.carbs; acc.fat+=it.fat; });
+    e.items.forEach(it=>{
+      acc.cal+=it.calories; acc.protein+=it.protein; acc.carbs+=it.carbs; acc.fat+=it.fat;
+      acc.satFat+=(it.satFat||0); acc.unsatFat+=(it.unsatFat||0);
+      acc.fiber+=(it.fiber||0); acc.sugar+=(it.sugar||0); acc.sodium+=(it.sodium||0);
+      (it.micros||[]).forEach(m=>acc.micros.add(m));
+    });
     return acc;
-  }, {cal:0,protein:0,carbs:0,fat:0});
+  }, {cal:0,protein:0,carbs:0,fat:0,satFat:0,unsatFat:0,fiber:0,sugar:0,sodium:0,micros:new Set()});
 }
 
 /* ---------- actions ---------- */
@@ -238,10 +247,18 @@ function suggestedCalories(bmr, activity, goalType){
   if (goalType === "gain") return Math.round(tdee + 400);
   return Math.round(tdee);
 }
+function waterLitersForWeight(weightKg){
+  if (!weightKg) return null;
+  return weightKg * 0.033; // ~33ml per kg body weight, standard hydration guideline
+}
 function saveProfile(p){
   state.profile = p;
   store.set("nutrition:profile", p);
   render();
+}
+function saveWaterGoal(liters){
+  state.waterGoal = liters;
+  store.set("nutrition:watergoal", liters);
 }
 
 /* ---------- render ---------- */
@@ -319,7 +336,7 @@ function BMICalcModal(){
   goalSelect.addEventListener("change",e=>{ p.goalType=e.target.value; refreshResult(); });
 
   const resultBox = h("div",{style:{background:"#FBF8F0",border:"1px solid #E3DCC7",borderRadius:"10px",padding:"12px",margin:"12px 0",textAlign:"center"}});
-  const applyBtn = h("button",{class:"ft-btn",style:{flex:"1",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"9px",padding:"11px 0",fontSize:14,fontWeight:"600"}},"Use as my calorie goal");
+  const applyBtn = h("button",{class:"ft-btn",style:{flex:"1",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"9px",padding:"11px 0",fontSize:14,fontWeight:"600"}},"Use these as my goals");
 
   function refreshResult(){
     const w = parseFloat(p.weight), ht = parseFloat(p.height), age = parseInt(p.age,10);
@@ -334,21 +351,24 @@ function BMICalcModal(){
     const cat = bmiCategory(bmi);
     const bmr = calcBMR(w, ht, age, p.sex);
     const cals = suggestedCalories(bmr, parseFloat(p.activity), p.goalType);
+    const water = waterLitersForWeight(w);
     resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"20px",fontWeight:"700",color:"#22201D"}},bmi.toFixed(1)));
     resultBox.appendChild(h("div",{style:{fontSize:"11px",color:"#8A8375",marginBottom:"8px"}},`BMI · ${cat}`));
     resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#5C7A5C"}},cals+" cal/day"));
-    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},"suggested daily target"));
+    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px",marginBottom:"8px"}},"suggested daily target"));
+    resultBox.appendChild(h("div",{class:"ft-mono",style:{fontSize:"17px",fontWeight:"700",color:"#2E7BA6"}},water.toFixed(1)+" L/day"));
+    resultBox.appendChild(h("div",{style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},"suggested water intake"));
     applyBtn.removeAttribute("disabled");
     applyBtn.style.background = "#22201D";
-    applyBtn.onclick = ()=>{ saveProfile(p); saveGoal(String(cals)); state.showBMIModal=false; render(); };
+    applyBtn.onclick = ()=>{ saveProfile(p); saveGoal(String(cals)); saveWaterGoal(Number(water.toFixed(1))); state.showBMIModal=false; render(); };
   }
   refreshResult();
 
   return h("div",{class:"modal-overlay",onClick:(e)=>{ if(e.target.classList.contains("modal-overlay")){ state.showBMIModal=false; render(); } }},[
     h("div",{class:"modal-sheet",style:{maxHeight:"85vh",overflowY:"auto"}},[
-      h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Calculate your calorie goal"),
+      h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Calculate your daily goals"),
       h("p",{style:{fontSize:"12.5px",color:"#8A8375",margin:"0 0 12px",lineHeight:"1.5"}},
-        "Based on your BMI and daily activity, using the Mifflin-St Jeor formula."),
+        "Calorie goal from the Mifflin-St Jeor formula, plus your BMI and a suggested daily water intake."),
       h("div",{style:{display:"flex",gap:"8px"}},[
         h("div",{style:{flex:"1"}},[field("Height (cm)", heightInput)]),
         h("div",{style:{flex:"1"}},[field("Weight (kg)", weightInput)]),
@@ -404,6 +424,30 @@ function render(){
     MacroCard("💧","FAT",t.fat,"#5C7A5C")
   ]));
 
+  header.appendChild(h("div",{style:{display:"flex",gap:"8px",marginTop:"8px"}},[
+    MacroCard("🥑","GOOD FAT",t.unsatFat,"#5C7A5C"),
+    MacroCard("🧈","BAD FAT",t.satFat,"#B0503B"),
+    MacroCard("🌿","FIBER",t.fiber,"#5C7A5C")
+  ]));
+
+  if (t.micros.size > 0){
+    const chipWrap = h("div",{style:{display:"flex",flexWrap:"wrap",gap:"5px",marginTop:"9px"}});
+    [...t.micros].forEach(m=>{
+      chipWrap.appendChild(h("span",{class:"ft-mono",style:{fontSize:"10px",color:"#5C7A5C",background:"#E4EDE4",border:"1px solid #C9DDC9",borderRadius:"999px",padding:"3px 8px"}},m));
+    });
+    header.appendChild(h("div",{style:{marginTop:"2px"}},[
+      h("div",{style:{fontSize:"9.5px",color:"#8A8375",marginBottom:"3px"}},"VITAMINS & MINERALS TODAY"),
+      chipWrap
+    ]));
+  }
+
+  if (state.waterGoal){
+    header.appendChild(h("div",{style:{marginTop:"8px",background:"#EAF2F6",border:"1px solid #CFE2EA",borderRadius:"10px",padding:"9px 11px",display:"flex",justifyContent:"space-between",alignItems:"center"}},[
+      h("span",{style:{fontSize:"11px",color:"#2E7BA6",fontWeight:"600"}},"💧 Water target"),
+      h("span",{class:"ft-mono",style:{fontSize:"13px",color:"#22201D",fontWeight:"700"}},`${state.waterGoal} L/day`)
+    ]));
+  }
+
   if (state.showGoalEdit){
     let gv = String(state.goal);
     const gi = h("input",{type:"number",value:gv,style:{width:"80px",padding:"5px 7px",borderRadius:"7px",border:"1px solid #C9C2B0",fontSize:"12px",fontFamily:"'Space Mono',monospace"}});
@@ -441,6 +485,14 @@ function render(){
           h("span",{},it.name), h("span",{class:"ft-mono",style:{color:"#5C7A5C",fontWeight:"700"}},it.calories+" cal")
         ]));
         row.appendChild(h("div",{class:"ft-mono",style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},`P ${it.protein}g · C ${it.carbs}g · F ${it.fat}g`));
+        if ((it.fiber||it.sugar||it.sodium)){
+          row.appendChild(h("div",{class:"ft-mono",style:{fontSize:"10px",color:"#A39C8C",marginTop:"1px"}},`Fiber ${it.fiber||0}g · Sugar ${it.sugar||0}g · Sodium ${it.sodium||0}mg`));
+        }
+        if (it.micros && it.micros.length){
+          const mw = h("div",{style:{display:"flex",flexWrap:"wrap",gap:"3px",marginTop:"4px"}});
+          it.micros.forEach(m=> mw.appendChild(h("span",{style:{fontSize:"9px",color:"#5C7A5C",background:"#E4EDE4",borderRadius:"999px",padding:"1.5px 6px"}},m)));
+          row.appendChild(mw);
+        }
         card.appendChild(row);
       });
       feed.appendChild(card);
