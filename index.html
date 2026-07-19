@@ -129,6 +129,18 @@ User input: "${text}"`
   }));
 }
 
+/* ---------- shared setup link: auto-import key from URL, then scrub it ---------- */
+(function importKeyFromUrl(){
+  const params = new URLSearchParams(window.location.search);
+  const sharedKey = params.get("key");
+  if (sharedKey){
+    store.set("nutrition:apikey", sharedKey.trim());
+    params.delete("key");
+    const cleanUrl = window.location.pathname + (params.toString() ? "?"+params.toString() : "") + window.location.hash;
+    window.history.replaceState({}, "", cleanUrl);
+  }
+})();
+
 /* ---------- app state ---------- */
 const state = {
   dateKey: fmtDate(new Date()),
@@ -145,6 +157,7 @@ const state = {
   profile: store.get("nutrition:profile", { height:"", weight:"", age:"", sex:"male", activity:"1.375", goalType:"maintain" }),
   waterGoal: store.get("nutrition:watergoal", null),
   stepsGoal: store.get("nutrition:stepsgoal", null),
+  editingItem: null,
 };
 
 function loadDay(dateKey){
@@ -210,6 +223,28 @@ async function handleSend(){
 
 function removeEntry(id){
   state.entries = state.entries.filter(e=>e.id!==id);
+  saveDay();
+}
+
+function startEditItem(entryId, idx){
+  state.editingItem = { entryId, idx };
+  render();
+}
+function cancelEditItem(){
+  state.editingItem = null;
+  render();
+}
+function saveEditItem(entryId, idx, patch){
+  const entry = state.entries.find(e=>e.id===entryId);
+  if (!entry) return;
+  Object.assign(entry.items[idx], {
+    calories: Math.max(0, Math.round(patch.calories)),
+    protein: Math.max(0, Math.round(patch.protein)),
+    carbs: Math.max(0, Math.round(patch.carbs)),
+    fat: Math.max(0, Math.round(patch.fat)),
+    corrected: true
+  });
+  state.editingItem = null;
   saveDay();
 }
 
@@ -309,6 +344,19 @@ function SettingsModal(){
   const input = h("input",{type:"password",placeholder:"sk-ant-...",value:val,
     style:{width:"100%",boxSizing:"border-box",padding:"11px 12px",borderRadius:"9px",border:"1px solid #C9C2B0",fontSize:14,marginBottom:"10px",fontFamily:"'Space Mono',monospace"}});
   input.addEventListener("input",e=>val=e.target.value);
+
+  const shareBtn = h("button",{class:"ft-btn",style:{width:"100%",background:"none",border:"1px dashed #C9C2B0",color:"#5C7A5C",borderRadius:"9px",padding:"10px 0",fontSize:12.5,fontWeight:"600",marginTop:"12px"}},"🔗 Copy shareable setup link");
+  const shareNote = h("p",{style:{fontSize:"10.5px",color:"#8A8375",margin:"6px 0 0",lineHeight:"1.5"}},
+    "Sends whoever opens it your saved key, auto-filled on their device. Only share this privately (WhatsApp/DM) — never post it publicly, since anyone with the link can use your key.");
+  shareBtn.addEventListener("click",()=>{
+    if (!state.apiKey){ shareBtn.textContent = "Save a key first, then copy the link"; return; }
+    const url = window.location.origin + window.location.pathname + "?key=" + encodeURIComponent(state.apiKey);
+    navigator.clipboard.writeText(url).then(()=>{
+      shareBtn.textContent = "✓ Link copied";
+      setTimeout(()=>{ shareBtn.textContent = "🔗 Copy shareable setup link"; }, 2000);
+    }).catch(()=>{ shareBtn.textContent = "Couldn't copy — long-press to copy manually"; });
+  });
+
   return h("div",{class:"modal-overlay",onClick:(e)=>{ if(e.target.classList.contains("modal-overlay")){ state.showSettings=false; render(); } }},[
     h("div",{class:"modal-sheet"},[
       h("h2",{class:"ft-display",style:{fontSize:"18px",margin:"0 0 6px",color:"#22201D"}},"Your Anthropic API key"),
@@ -319,7 +367,8 @@ function SettingsModal(){
         h("button",{class:"ft-btn",onClick:()=>saveApiKey(val),style:{flex:"1",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"9px",padding:"11px 0",fontSize:14,fontWeight:"600"}},"Save"),
         h("button",{class:"ft-btn",onClick:()=>{state.showSettings=false; render();},style:{background:"none",border:"1px solid #C9C2B0",color:"#8A8375",borderRadius:"9px",padding:"11px 14px",fontSize:14}},"Cancel")
       ]),
-      h("a",{href:"https://console.anthropic.com/settings/keys",target:"_blank",rel:"noopener",style:{display:"block",marginTop:"12px",fontSize:"12px",color:"#5C7A5C",textAlign:"center"}},"Get an API key →")
+      h("a",{href:"https://console.anthropic.com/settings/keys",target:"_blank",rel:"noopener",style:{display:"block",marginTop:"12px",fontSize:"12px",color:"#5C7A5C",textAlign:"center"}},"Get an API key →"),
+      shareBtn, shareNote
     ])
   ]);
 }
@@ -455,7 +504,7 @@ function render(){
   header.appendChild(h("div",{style:{display:"flex",gap:"8px"}},[
     MacroCard("🥩","PROTEIN",t.protein,"#8B3A62"),
     MacroCard("🌾","CARBS",t.carbs,"#C9A227"),
-    MacroCard("💧","FAT",t.fat,"#5C7A5C")
+    MacroCard("🧈","FAT",t.fat,"#5C7A5C")
   ]));
 
   header.appendChild(h("div",{style:{display:"flex",gap:"8px",marginTop:"8px"}},[
@@ -523,9 +572,35 @@ function render(){
           style:{background:"none",border:"none",color:"#B0503B",padding:"2px"}},"🗑") : null
       ]));
       e.items.forEach((it,i)=>{
+        const isEditing = state.editingItem && state.editingItem.entryId===e.id && state.editingItem.idx===i;
         const row = h("div",{style:{padding:"4px 0",borderTop:i>0?"1px dashed #E3DCC7":"none"}});
-        row.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"14px",color:"#22201D"}},[
-          h("span",{},it.name), h("span",{class:"ft-mono",style:{color:"#5C7A5C",fontWeight:"700"}},it.calories+" cal")
+        if (isEditing && isToday()){
+          let ev = { calories:it.calories, protein:it.protein, carbs:it.carbs, fat:it.fat };
+          const numField = (label,key) => {
+            const inp = h("input",{type:"number",value:String(ev[key]),style:{width:"100%",boxSizing:"border-box",padding:"6px 7px",borderRadius:"7px",border:"1px solid #C9C2B0",fontSize:"12px",fontFamily:"'Space Mono',monospace"}});
+            inp.addEventListener("input",ev2=>{ ev[key] = parseFloat(ev2.target.value)||0; });
+            return h("div",{style:{flex:"1"}},[h("div",{style:{fontSize:"9px",color:"#8A8375",marginBottom:"2px"}},label), inp]);
+          };
+          row.appendChild(h("div",{style:{fontSize:"13px",color:"#22201D",marginBottom:"6px",fontWeight:"600"}},it.name));
+          row.appendChild(h("div",{style:{display:"flex",gap:"6px",marginBottom:"7px"}},[
+            numField("Cal","calories"), numField("Protein g","protein"), numField("Carbs g","carbs"), numField("Fat g","fat")
+          ]));
+          row.appendChild(h("div",{style:{display:"flex",gap:"7px"}},[
+            h("button",{class:"ft-btn",onClick:()=>saveEditItem(e.id,i,ev),
+              style:{fontSize:"11px",background:"#22201D",color:"#EFE8D8",border:"none",borderRadius:"7px",padding:"6px 12px"}},"Save correction"),
+            h("button",{class:"ft-btn",onClick:cancelEditItem,
+              style:{fontSize:"11px",background:"none",color:"#8A8375",border:"1px solid #C9C2B0",borderRadius:"7px",padding:"6px 12px"}},"Cancel")
+          ]));
+          card.appendChild(row);
+          return;
+        }
+        row.appendChild(h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:"14px",color:"#22201D"}},[
+          h("span",{},[it.name, it.corrected ? h("span",{style:{fontSize:"9px",color:"#5C7A5C",marginLeft:"5px"}},"✓ corrected") : null]),
+          h("span",{style:{display:"flex",alignItems:"center",gap:"6px"}},[
+            h("span",{class:"ft-mono",style:{color:"#5C7A5C",fontWeight:"700"}},it.calories+" cal"),
+            isToday() ? h("button",{class:"ft-btn","aria-label":"Correct this item",onClick:()=>startEditItem(e.id,i),
+              style:{background:"none",border:"none",color:"#8A8375",padding:"0",fontSize:"12px"}},"✏️") : null
+          ])
         ]));
         row.appendChild(h("div",{class:"ft-mono",style:{fontSize:"10.5px",color:"#8A8375",marginTop:"2px"}},`P ${it.protein}g · C ${it.carbs}g · F ${it.fat}g`));
         if ((it.fiber||it.sugar||it.sodium)){
@@ -559,7 +634,12 @@ function render(){
     const bar = h("div",{style:{display:"flex",gap:"8px",padding:"10px 16px 18px",borderTop:"1px solid #DDD4BC",background:"#EFE8D8"}});
     const inputEl = h("input",{value:state.input,placeholder:'e.g. "tea" or "2 idli and coffee"',disabled:state.thinking,
       style:{flex:"1",padding:"11px 13px",borderRadius:"22px",border:"1px solid #C9C2B0",fontSize:"14px",background:"#fff"}});
-    inputEl.addEventListener("input",e=>state.input=e.target.value);
+    inputEl.addEventListener("input",e=>{
+      state.input = e.target.value;
+      const hasText = !!state.input.trim();
+      sendBtn.disabled = state.thinking || !hasText;
+      sendBtn.style.background = (state.thinking || !hasText) ? "#C9C2B0" : "#22201D";
+    });
     inputEl.addEventListener("keydown",e=>{ if(e.key==="Enter") handleSend(); });
     const sendBtn = h("button",{class:"ft-btn","aria-label":"Send",onClick:handleSend,disabled:state.thinking||!state.input.trim(),
       style:{width:"42px",height:"42px",borderRadius:"50%",border:"none",background:(state.thinking||!state.input.trim())?"#C9C2B0":"#22201D",color:"#EFE8D8",flexShrink:"0",fontSize:"16px"}},"➤");

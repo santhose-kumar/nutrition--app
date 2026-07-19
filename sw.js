@@ -1,4 +1,4 @@
-const CACHE = "nutrition-cache-v4";
+const CACHE = "nutrition-cache-v7";
 const SHELL = ["./index.html", "./manifest.json"];
 
 self.addEventListener("install", (e) => {
